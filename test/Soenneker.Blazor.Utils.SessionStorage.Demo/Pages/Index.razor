@@ -1,0 +1,194 @@
+@page "/"
+@using System.Collections.Generic
+@using System.Threading.Tasks
+@using Soenneker.Blazor.Utils.SessionStorage.Abstract
+
+@inject ISessionStorageUtil SessionStorage
+
+<PageTitle>SessionStorage Demo</PageTitle>
+
+<div class="demo-shell">
+    <section class="hero-panel">
+        <div class="hero-copy">
+            <span class="eyebrow">Blazor utility showcase</span>
+            <h1>Session-scoped storage with the same clean Soenneker ergonomics.</h1>
+            <p class="hero-text">
+                Explore <code>Soenneker.Blazor.Utils.SessionStorage</code> through a polished control surface for writing,
+                reading, removing, and inspecting tab-scoped browser storage in real time.
+            </p>
+
+            <div class="hero-highlights">
+                <div class="hero-pill">Per-tab state</div>
+                <div class="hero-pill">Fast JS interop</div>
+                <div class="hero-pill">Typed helpers</div>
+            </div>
+        </div>
+
+        <div class="hero-metrics">
+            <article class="metric-card accent">
+                <span class="metric-label">Entries</span>
+                <strong class="metric-value">@_length</strong>
+                <span class="metric-meta">Currently stored in browser session storage</span>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-label">Selected key</span>
+                <strong class="metric-value metric-key">@_key</strong>
+                <span class="metric-meta">@(_containsKey ? "Present in this tab session" : "Not currently stored")</span>
+            </article>
+        </div>
+    </section>
+
+    <section class="workspace-grid">
+        <article class="glass-card command-card">
+            <div class="section-header">
+                <div>
+                    <span class="section-kicker">Command center</span>
+                    <h2>Interact with session storage</h2>
+                </div>
+
+                <div class="status-badge">@StatusLabel</div>
+            </div>
+
+            <p class="section-description">
+                Update the key and payload below, then run any action to see the current tab session update instantly.
+            </p>
+
+            <div class="input-grid">
+                <div class="field-group">
+                    <label for="key-input">Storage key</label>
+                    <input id="key-input" class="demo-input" @bind="_key" />
+                </div>
+
+                <div class="field-group field-group-wide">
+                    <label for="value-input">Value</label>
+                    <textarea id="value-input" class="demo-textarea" @bind="_value" rows="8"></textarea>
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="demo-button demo-button-primary" @onclick="SetValue">Set value</button>
+                <button class="demo-button" @onclick="GetValue">Get value</button>
+                <button class="demo-button" @onclick="RemoveValue">Remove key</button>
+                <button class="demo-button demo-button-danger" @onclick="ClearAll">Clear all</button>
+                <button class="demo-button demo-button-muted" @onclick="RefreshState">Refresh</button>
+            </div>
+
+            <div class="status-panel">
+                <span class="status-caption">Status</span>
+                <p>@_status</p>
+            </div>
+        </article>
+
+        <article class="glass-card result-card">
+            <div class="section-header">
+                <div>
+                    <span class="section-kicker">Result viewer</span>
+                    <h2>Loaded value</h2>
+                </div>
+            </div>
+
+            <pre class="result-surface">@(_loadedValue ?? "(null)")</pre>
+
+            <div class="detail-grid">
+                <div class="detail-card">
+                    <span class="detail-label">Storage count</span>
+                    <strong>@_length</strong>
+                </div>
+
+                <div class="detail-card">
+                    <span class="detail-label">Key state</span>
+                    <strong>@(_containsKey ? "Stored" : "Missing")</strong>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="glass-card inventory-card">
+        <div class="section-header">
+            <div>
+                <span class="section-kicker">Inventory</span>
+                <h2>Keys currently in session storage</h2>
+            </div>
+        </div>
+
+        @if (_keys.Count == 0)
+        {
+            <div class="empty-state">
+                <strong>No keys stored yet.</strong>
+                <p>Use the command center above to add a value and watch it appear for this browser tab.</p>
+            </div>
+        }
+        else
+        {
+            <div class="key-cloud">
+                @foreach (string key in _keys)
+                {
+                    <button class="key-chip" @onclick="@(() => SelectKey(key))">@key</button>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private string _key = "session-demo-key";
+    private string _value = "{\n  \"message\": \"Hello from Soenneker sessionStorage\",\n  \"scope\": \"tab-session\"\n}";
+    private string? _loadedValue;
+    private string _status = "Ready";
+    private int _length;
+    private IReadOnlyList<string> _keys = [];
+    private bool _containsKey;
+
+    private string StatusLabel => _containsKey ? "Key present" : "Awaiting value";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SessionStorage.Initialize();
+        await RefreshState();
+    }
+
+    private async Task SetValue()
+    {
+        await SessionStorage.Set(_key, _value);
+        _status = $"Stored value for '{_key}'.";
+        await RefreshState();
+    }
+
+    private async Task GetValue()
+    {
+        _loadedValue = await SessionStorage.Get(_key);
+        _status = _loadedValue is null ? $"No value found for '{_key}'." : $"Loaded value for '{_key}'.";
+        await RefreshState();
+    }
+
+    private async Task RemoveValue()
+    {
+        await SessionStorage.Remove(_key);
+        _loadedValue = null;
+        _status = $"Removed '{_key}'.";
+        await RefreshState();
+    }
+
+    private async Task ClearAll()
+    {
+        await SessionStorage.Clear();
+        _loadedValue = null;
+        _status = "Cleared all sessionStorage entries for this tab.";
+        await RefreshState();
+    }
+
+    private async Task RefreshState()
+    {
+        _length = await SessionStorage.GetLength();
+        _keys = await SessionStorage.GetKeys();
+        _containsKey = await SessionStorage.ContainsKey(_key);
+    }
+
+    private async Task SelectKey(string key)
+    {
+        _key = key;
+        _status = $"Selected '{key}'.";
+        await RefreshState();
+    }
+}
