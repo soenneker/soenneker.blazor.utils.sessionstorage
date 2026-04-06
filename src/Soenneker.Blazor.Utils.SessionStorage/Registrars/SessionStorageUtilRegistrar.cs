@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Soenneker.Blazor.Utils.SessionStorage.Abstract;
-using Soenneker.Blazor.Utils.ResourceLoader.Registrars;
+using Soenneker.Blazor.Utils.ModuleImport.Registrars;
 
 namespace Soenneker.Blazor.Utils.SessionStorage.Registrars;
 
@@ -15,7 +15,7 @@ public static class SessionStorageUtilRegistrar
     /// </summary>
     public static IServiceCollection AddSessionStorageUtilAsScoped(this IServiceCollection services)
     {
-        services.AddResourceLoaderAsScoped()
+        services.AddModuleImportUtilAsScoped()
                 .TryAddScoped<ISessionStorageInterop, SessionStorageInterop>();
 
         services.TryAddScoped<ISessionStorageUtil, SessionStorageUtil>();
