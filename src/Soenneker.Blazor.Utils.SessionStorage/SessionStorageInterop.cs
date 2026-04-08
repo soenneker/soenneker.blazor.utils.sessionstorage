@@ -12,7 +12,7 @@ namespace Soenneker.Blazor.Utils.SessionStorage;
 /// <inheritdoc cref="ISessionStorageInterop"/>
 public sealed class SessionStorageInterop : ISessionStorageInterop
 {
-    private const string _modulePath = "/_content/Soenneker.Blazor.Utils.SessionStorage/js/sessionstorageinterop.js";
+    private const string _modulePath = "_content/Soenneker.Blazor.Utils.SessionStorage/js/sessionstorageinterop.js";
 
     private readonly IModuleImportUtil _moduleImportUtil;
     private readonly CancellationScope _cancellationScope = new();
