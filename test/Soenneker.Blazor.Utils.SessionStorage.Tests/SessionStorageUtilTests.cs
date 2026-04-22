@@ -1,20 +1,19 @@
 using Soenneker.Blazor.Utils.SessionStorage.Abstract;
-using Soenneker.Tests.FixturedUnit;
-using Xunit;
+using Soenneker.Tests.HostedUnit;
 
 namespace Soenneker.Blazor.Utils.SessionStorage.Tests;
 
-[Collection("Collection")]
-public sealed class SessionStorageUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public sealed class SessionStorageUtilTests : HostedUnitTest
 {
     private readonly ISessionStorageUtil _blazorlibrary;
 
-    public SessionStorageUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public SessionStorageUtilTests(Host host) : base(host)
     {
         _blazorlibrary = Resolve<ISessionStorageUtil>(true);
     }
 
-    [Fact]
+    [Test]
     public void Default()
     {
 
