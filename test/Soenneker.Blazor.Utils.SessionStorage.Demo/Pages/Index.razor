@@ -25,7 +25,7 @@
         </Div>
     </DemoPanel>
 
-    <Grid Columns="Columns.Is1.OnLg.Is2" Gap="Gap.Is4">
+    <Grid Columns="GridCols.Is1.OnLg.Is2" Gap="Gap.Is4">
         <DemoPanel Title="Commands" Description="Set, read, remove, or clear keys in this tab.">
             <Field>
                 <FieldLabel For="ss-key">Storage key</FieldLabel>
@@ -64,7 +64,7 @@
             <DemoButtonRow>
                 @foreach (string key in _keys)
                 {
-                    <Button OnClick="@(_ => SelectKey(key))" Variant="ButtonVariant.Outline" Size="ButtonSize.Sm">@key</Button>
+                    <Button OnClick="@(_ => SelectKey(key))" Variant="ButtonVariant.Outline" ButtonSize="ButtonSize.Sm">@key</Button>
                 }
             </DemoButtonRow>
         }
