@@ -13,6 +13,8 @@ public static class SessionStorageUtilRegistrar
     /// <summary>
     /// Adds <see cref="ISessionStorageInterop"/> and <see cref="ISessionStorageUtil"/> as scoped services.
     /// </summary>
+    /// <param name="services">Service collection that receives the registration.</param>
+    /// <returns>The same service collection, so additional registrations can be chained.</returns>
     public static IServiceCollection AddSessionStorageUtilAsScoped(this IServiceCollection services)
     {
         services.AddModuleImportUtilAsScoped()
