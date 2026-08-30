@@ -1,4 +1,11 @@
+function validateKey(key) {
+    if (typeof key !== "string" || key.trim().length === 0)
+        throw new Error("Session storage key must be a non-empty string.");
+}
+
 export function get(key) {
+    validateKey(key);
+
     if (typeof window === "undefined" || window.sessionStorage == null)
         return null;
 
@@ -6,13 +13,20 @@ export function get(key) {
 }
 
 export function set(key, value) {
+    validateKey(key);
+
+    if (typeof value !== "string")
+        throw new Error("Session storage value must be a string.");
+
     if (typeof window === "undefined" || window.sessionStorage == null)
         return;
 
-    window.sessionStorage.setItem(key, value ?? "");
+    window.sessionStorage.setItem(key, value);
 }
 
 export function remove(key) {
+    validateKey(key);
+
     if (typeof window === "undefined" || window.sessionStorage == null)
         return;
 
@@ -27,6 +41,8 @@ export function clear() {
 }
 
 export function containsKey(key) {
+    validateKey(key);
+
     if (typeof window === "undefined" || window.sessionStorage == null)
         return false;
 

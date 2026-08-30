@@ -63,8 +63,11 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
     {
         ValidateKey(key);
 
-        if (value is string stringValue)
-            return _interop.Set(key, stringValue, cancellationToken);
+        if (typeof(T) == typeof(string))
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            return _interop.Set(key, (string) (object) value, cancellationToken);
+        }
 
         string json = JsonSerializer.Serialize(value, _serializerOptions);
         return _interop.Set(key, json, cancellationToken);

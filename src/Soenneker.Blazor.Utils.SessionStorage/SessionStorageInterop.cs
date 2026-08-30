@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.JSInterop;
@@ -16,14 +17,16 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     private readonly IModuleImportUtil _moduleImportUtil;
     private readonly CancellationScope _cancellationScope = new();
+    private int _disposed;
 
     public SessionStorageInterop(IModuleImportUtil moduleImportUtil)
     {
-        _moduleImportUtil = moduleImportUtil;
+        _moduleImportUtil = moduleImportUtil ?? throw new ArgumentNullException(nameof(moduleImportUtil));
     }
 
     public async ValueTask Initialize(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
         using (source)
@@ -34,8 +37,8 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
-            return null;
+        ValidateKey(key);
+        ThrowIfDisposed();
 
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
@@ -48,22 +51,23 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask Set(string key, string value, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
-            return;
+        ValidateKey(key);
+        ArgumentNullException.ThrowIfNull(value);
+        ThrowIfDisposed();
 
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
         using (source)
         {
             IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            await module.InvokeVoidAsync("set", linked, key, value ?? "");
+            await module.InvokeVoidAsync("set", linked, key, value);
         }
     }
 
     public async ValueTask Remove(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
-            return;
+        ValidateKey(key);
+        ThrowIfDisposed();
 
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
@@ -76,6 +80,7 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask Clear(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
         using (source)
@@ -87,8 +92,8 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask<bool> ContainsKey(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
-            return false;
+        ValidateKey(key);
+        ThrowIfDisposed();
 
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
@@ -101,6 +106,7 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask<IReadOnlyList<string>> GetKeys(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
         using (source)
@@ -113,6 +119,7 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
 
     public async ValueTask<int> GetLength(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
 
         using (source)
@@ -122,13 +129,24 @@ public sealed class SessionStorageInterop : ISessionStorageInterop
         }
     }
 
-    /// <summary>
-    /// Asynchronously releases resources used by the current instance.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
+    private static void ValidateKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Session storage key cannot be null or whitespace.", nameof(key));
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+            throw new ObjectDisposedException(nameof(SessionStorageInterop));
+    }
+
     public async ValueTask DisposeAsync()
     {
-        await _moduleImportUtil.DisposeContentModule(_modulePath);
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
         await _cancellationScope.DisposeAsync();
+        await _moduleImportUtil.DisposeContentModule(_modulePath);
     }
 }

@@ -29,7 +29,7 @@ public interface ISessionStorageInterop : IAsyncDisposable
     /// Sets a string value for the specified key.
     /// </summary>
     /// <param name="key">Key used to locate the target entry.</param>
-    /// <param name="value">Value to serialize and store under the specified key.</param>
+    /// <param name="value">String value to store under the specified key.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the set operation is complete.</returns>
     ValueTask Set(string key, string value, CancellationToken cancellationToken = default);
@@ -61,7 +61,7 @@ public interface ISessionStorageInterop : IAsyncDisposable
     /// Returns all session storage keys in index order.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>A task whose result is the collection returned by get Keys.</returns>
+    /// <returns>The storage keys in browser index order.</returns>
     ValueTask<IReadOnlyList<string>> GetKeys(CancellationToken cancellationToken = default);
 
     /// <summary>
