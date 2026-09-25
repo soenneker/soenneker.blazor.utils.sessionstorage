@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +33,19 @@ public interface ISessionStorageUtil
     /// <param name="key">Key used to locate the target entry.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the value returned by get.</returns>
+    [RequiresUnreferencedCode("JSON deserialization uses reflection. Use the overload accepting JsonTypeInfo<T> for trimming.")]
+    [RequiresDynamicCode("JSON deserialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     ValueTask<T?> Get<T>(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a JSON-serialized value by key, or default if the key does not exist.
+    /// </summary>
+    /// <typeparam name="T">Type of value handled by the session storage.</typeparam>
+    /// <param name="key">Key used to locate the target entry.</param>
+    /// <param name="typeInfo">Generated JSON metadata for the value type.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task whose result is the value returned by get.</returns>
+    ValueTask<T?> Get<T>(string key, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a string value for the specified key.
@@ -50,7 +64,20 @@ public interface ISessionStorageUtil
     /// <param name="value">Value to serialize and store under the specified key.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the set operation is complete.</returns>
+    [RequiresUnreferencedCode("JSON serialization uses reflection. Use the overload accepting JsonTypeInfo<T> for trimming.")]
+    [RequiresDynamicCode("JSON serialization may require runtime code generation. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     ValueTask Set<T>(string key, T value, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets a JSON-serialized value for the specified key.
+    /// </summary>
+    /// <typeparam name="T">Type of value handled by the session storage.</typeparam>
+    /// <param name="key">Key used to locate the target entry.</param>
+    /// <param name="value">Value to serialize and store under the specified key.</param>
+    /// <param name="typeInfo">Generated JSON metadata for the value type.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>A task that completes when the set operation is complete.</returns>
+    ValueTask Set<T>(string key, T value, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a stored value by key.
