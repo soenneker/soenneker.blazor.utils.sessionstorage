@@ -6,10 +6,11 @@ function validateKey(key) {
 export function get(key) {
     validateKey(key);
 
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return null;
 
-    return window.sessionStorage.getItem(key);
+    return storage.getItem(key);
 }
 
 export function set(key, value) {
@@ -18,45 +19,50 @@ export function set(key, value) {
     if (typeof value !== "string")
         throw new Error("Session storage value must be a string.");
 
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return;
 
-    window.sessionStorage.setItem(key, value);
+    storage.setItem(key, value);
 }
 
 export function remove(key) {
     validateKey(key);
 
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return;
 
-    window.sessionStorage.removeItem(key);
+    storage.removeItem(key);
 }
 
 export function clear() {
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return;
 
-    window.sessionStorage.clear();
+    storage.clear();
 }
 
 export function containsKey(key) {
     validateKey(key);
 
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return false;
 
-    return window.sessionStorage.getItem(key) !== null;
+    return storage.getItem(key) !== null;
 }
 
 export function getKeys() {
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return [];
 
     const keys = [];
 
-    for (let i = 0; i < window.sessionStorage.length; i++) {
-        const key = window.sessionStorage.key(i);
+    for (let i = 0, length = storage.length; i < length; i++) {
+        const key = storage.key(i);
 
         if (key != null)
             keys.push(key);
@@ -66,8 +72,9 @@ export function getKeys() {
 }
 
 export function getLength() {
-    if (typeof window === "undefined" || window.sessionStorage == null)
+    const storage = typeof window === "undefined" ? null : window.sessionStorage;
+    if (storage == null)
         return 0;
 
-    return window.sessionStorage.length;
+    return storage.length;
 }
