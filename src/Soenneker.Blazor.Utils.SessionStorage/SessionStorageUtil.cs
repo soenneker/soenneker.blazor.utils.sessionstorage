@@ -1,4 +1,3 @@
-using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
 using System;
 using System.Collections.Generic;
@@ -22,8 +21,7 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
     private const string _containerName = "entries";
     private readonly IModuleImportUtil _moduleImportUtil;
     private readonly ILogger<SessionStorageLibrarianDatabase> _logger;
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public SessionStorageUtil(IModuleImportUtil moduleImportUtil, ILogger<SessionStorageLibrarianDatabase> logger)
     {
@@ -167,32 +165,24 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
 
     private async ValueTask<T> Run<T>(Func<ILibrarianContainer, ValueTask<T>> operation, CancellationToken cancellationToken, bool save = false)
     {
-        await _gate.WaitAsync(cancellationToken).NoSync();
+        cancellationToken.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        // Reopen to read current storage and recover after a conflict. Librarian coordinates writes.
+        var database = new SessionStorageLibrarianDatabase(_moduleImportUtil, _logger, "Soenneker.Blazor.Utils.SessionStorage");
         try
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            // Reopen each operation to read the current snapshot and recover naturally after a conflict.
-            var database = new SessionStorageLibrarianDatabase(_moduleImportUtil, _logger, "Soenneker.Blazor.Utils.SessionStorage");
-            try
-            {
-                ILibrarianContainer container = await database.GetContainer(_containerName, cancellationToken).NoSync();
-                T result = await operation(container).NoSync();
-                if (save)
-                    await database.Save(cancellationToken).NoSync();
-                return result;
-            }
-            finally
-            {
-                // Never flush or replay an uncertain write during cleanup.
-                await database.DiscardAsync().NoSync();
-            }
+            ILibrarianContainer container = await database.GetContainer(_containerName, cancellationToken).NoSync();
+            T result = await operation(container).NoSync();
+            if (save)
+                await database.Save(cancellationToken).NoSync();
+            return result;
         }
         finally
         {
-            _gate.Release();
+            // Never flush or replay an uncertain write during cleanup.
+            await database.DiscardAsync().NoSync();
         }
     }
-
     // Snapshot IDs are case-insensitive. Hex-encoded UTF-16 preserves browser key identity.
     private static string EncodeKey(string key)
     {
@@ -210,10 +200,9 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
             destination[i] = (char)ushort.Parse(value.AsSpan(i * 4, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
     });
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        await _gate.WaitAsync().NoSync();
-        try { _disposed = true; }
-        finally { _gate.Release(); }
+        _disposed = true;
+        return ValueTask.CompletedTask;
     }
 }

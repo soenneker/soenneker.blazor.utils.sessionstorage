@@ -12,10 +12,13 @@ namespace Soenneker.Blazor.Utils.SessionStorage.Abstract;
 /// </summary>
 /// <remarks>Uses a dedicated Librarian snapshot. Existing raw browser entries are not migrated.
 /// Mutations persist before returning; writes require Web Locks in a secure context.
-/// External writes can raise LibrarianConcurrencyException; failed operations are not automatically retried.
+/// Overlapping or external writes can raise LibrarianConcurrencyException; failed operations are not automatically retried.
 /// Clear, GetKeys, and GetLength apply only to documents belonging to this utility.</remarks>
 public interface ISessionStorageUtil : IAsyncDisposable
 {
+    /// <summary>Prevents new operations. Operations already started retain their own database and finish independently.</summary>
+    new ValueTask DisposeAsync();
+
     /// <summary>
     /// Opens the Librarian document container after interactive rendering.
     /// </summary>

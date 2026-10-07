@@ -84,4 +84,45 @@ public sealed class LibrarianStorageTests
         if (await storage.ContainsKey("key"))
             throw new InvalidOperationException("The next delete did not recover.");
     }
+
+    [Test]
+    public async Task OverlappingWritesUseLibrarianConflictDetection()
+    {
+        var runtime = new SnapshotRuntime();
+        await using var modules = new ModuleImportUtil(runtime);
+        await using var storage = new SessionStorageUtil(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
+        await storage.Set("key", "original");
+
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        runtime.WriteStarted = started;
+        runtime.ResumeWrite = resume;
+        Task pending = storage.Set("key", "pending").AsTask();
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await storage.Set("key", "winner").AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            resume.TrySetResult();
+            try
+            {
+                await pending;
+                throw new InvalidOperationException("Expected Librarian to reject the stale snapshot.");
+            }
+            catch (LibrarianConcurrencyException) { }
+        }
+
+        if (await storage.Get("key") != "winner")
+            throw new InvalidOperationException("The stale write overwrote the committed value.");
+
+        await storage.DisposeAsync();
+        try
+        {
+            await storage.Get("key");
+            throw new InvalidOperationException("Disposed utilities must reject new operations.");
+        }
+        catch (ObjectDisposedException) { }
+    }
 }

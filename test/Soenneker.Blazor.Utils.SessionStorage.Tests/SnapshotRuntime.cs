@@ -11,11 +11,13 @@ internal sealed class SnapshotRuntime : IJSRuntime, IJSObjectReference
     public string? Backend { get; private set; }
     public bool RejectNextWrite { get; set; }
     public int Writes { get; private set; }
+    public TaskCompletionSource? WriteStarted { get; set; }
+    public TaskCompletionSource? ResumeWrite { get; set; }
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
-    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+    public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         cancellationToken.ThrowIfCancellationRequested();
         object? result;
@@ -29,6 +31,13 @@ internal sealed class SnapshotRuntime : IJSRuntime, IJSObjectReference
                 result = Snapshot;
                 break;
             case "compareExchange":
+                TaskCompletionSource? resume = ResumeWrite;
+                if (resume is not null)
+                {
+                    ResumeWrite = null;
+                    WriteStarted!.SetResult();
+                    await resume.Task.WaitAsync(cancellationToken);
+                }
                 Writes++;
                 bool accepted = !RejectNextWrite && Snapshot == (string?)args![2];
                 RejectNextWrite = false;
@@ -38,7 +47,7 @@ internal sealed class SnapshotRuntime : IJSRuntime, IJSObjectReference
             default:
                 throw new InvalidOperationException(identifier);
         }
-        return ValueTask.FromResult((TValue)result!);
+        return (TValue)result!;
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
