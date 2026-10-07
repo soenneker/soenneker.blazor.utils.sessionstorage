@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization.Metadata;
 using System.Collections.Generic;
@@ -7,13 +8,13 @@ using System.Threading.Tasks;
 namespace Soenneker.Blazor.Utils.SessionStorage.Abstract;
 
 /// <summary>
-/// A higher-level Blazor utility for browser <c>sessionStorage</c> built on top of <see cref="ISessionStorageInterop"/>.
+/// A Blazor utility for browser <c>sessionStorage</c> backed by Librarian.
 /// </summary>
 /// <remarks>Uses a dedicated Librarian snapshot. Existing raw browser entries are not migrated.
 /// Mutations persist before returning; writes require Web Locks in a secure context.
 /// External writes can raise LibrarianConcurrencyException; failed operations are not automatically retried.
 /// Clear, GetKeys, and GetLength apply only to documents belonging to this utility.</remarks>
-public interface ISessionStorageUtil
+public interface ISessionStorageUtil : IAsyncDisposable
 {
     /// <summary>
     /// Opens the Librarian document container after interactive rendering.

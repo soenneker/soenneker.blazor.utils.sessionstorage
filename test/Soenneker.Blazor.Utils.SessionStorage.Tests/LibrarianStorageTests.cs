@@ -15,14 +15,14 @@ public sealed class LibrarianStorageTests
     {
         var runtime = new SnapshotRuntime();
         await using var modules = new ModuleImportUtil(runtime);
-        await using var first = new SessionStorageInterop(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
+        await using var first = new SessionStorageUtil(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
         await first.Set("Key", "plain text");
         await first.Set("key", "{\"number\":42}");
         await first.Set("emoji-😀", "");
         if (runtime.Backend != "sessionStorage" || runtime.Snapshot is null)
             throw new InvalidOperationException("The Librarian browser backend was not used.");
 
-        await using var second = new SessionStorageInterop(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
+        await using var second = new SessionStorageUtil(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
         if (await second.Get("Key") != "plain text" || await second.Get("key") != "{\"number\":42}")
             throw new InvalidOperationException("Stored documents did not survive reopening.");
         if (!(await second.GetKeys()).Order().SequenceEqual(new[] { "Key", "key", "emoji-😀" }.Order()))
@@ -40,7 +40,7 @@ public sealed class LibrarianStorageTests
     {
         var runtime = new SnapshotRuntime();
         await using var modules = new ModuleImportUtil(runtime);
-        await using var storage = new SessionStorageInterop(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
+        await using var storage = new SessionStorageUtil(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
         await storage.Set("key", "original");
         runtime.RejectNextWrite = true;
         try
@@ -63,7 +63,7 @@ public sealed class LibrarianStorageTests
     {
         var runtime = new SnapshotRuntime();
         await using var modules = new ModuleImportUtil(runtime);
-        await using var storage = new SessionStorageInterop(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
+        await using var storage = new SessionStorageUtil(modules, NullLogger<SessionStorageLibrarianDatabase>.Instance);
         await storage.Set("key", "original");
         runtime.RejectNextWrite = true;
         try

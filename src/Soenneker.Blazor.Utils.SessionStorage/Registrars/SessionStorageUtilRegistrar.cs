@@ -6,19 +6,18 @@ using Soenneker.Blazor.Utils.SessionStorage.Abstract;
 namespace Soenneker.Blazor.Utils.SessionStorage.Registrars;
 
 /// <summary>
-/// Registration for the interop and utility services.
+/// Registration for the Librarian-backed storage utility.
 /// </summary>
 public static class SessionStorageUtilRegistrar
 {
     /// <summary>
-    /// Adds <see cref="ISessionStorageInterop"/> and <see cref="ISessionStorageUtil"/> as scoped services.
+    /// Adds <see cref="ISessionStorageUtil"/> as a scoped service.
     /// </summary>
     /// <param name="services">Service collection that receives the registration.</param>
     /// <returns>The same service collection, so additional registrations can be chained.</returns>
     public static IServiceCollection AddSessionStorageUtilAsScoped(this IServiceCollection services)
     {
         services.AddModuleImportUtilAsScoped();
-        services.TryAddScoped<ISessionStorageInterop, SessionStorageInterop>();
 
         services.TryAddScoped<ISessionStorageUtil, SessionStorageUtil>();
 

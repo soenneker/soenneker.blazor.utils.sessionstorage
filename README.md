@@ -83,6 +83,6 @@ await SessionStorage.Clear(cancellationToken);
 - Values are not encrypted. Any script running on the origin can read them, so do not store access tokens, passwords, or other secrets here.
 - Cancellation stops the .NET wait but cannot undo a browser storage mutation that already completed.
 
-## Low-level interop
+## Storage implementation
 
-`ISessionStorageInterop` exposes the raw string operations used by the utility. Most consumers should use `ISessionStorageUtil`. Both are scoped, and dependency injection disposes the interop and its imported module automatically.
+`ISessionStorageUtil` provides string and typed storage operations directly through Librarian. The utility and module importer are scoped and disposed by dependency injection; Librarian supplies the browser JavaScript.
