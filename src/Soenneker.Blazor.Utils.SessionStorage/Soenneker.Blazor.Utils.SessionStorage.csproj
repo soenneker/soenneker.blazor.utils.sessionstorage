@@ -42,6 +42,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Blazor.Utils.ModuleImport" Version="4.0.1909" />
+        <PackageReference Include="Soenneker.Librarian.SessionStorage" Version="4.0.69" />
     </ItemGroup>
 </Project>

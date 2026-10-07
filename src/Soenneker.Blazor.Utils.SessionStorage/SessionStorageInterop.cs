@@ -1,152 +1,144 @@
-using System.Collections.Generic;
+using Soenneker.Extensions.Task;
+using Soenneker.Extensions.ValueTask;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.JSInterop;
-using Soenneker.Blazor.Utils.SessionStorage.Abstract;
+using Microsoft.Extensions.Logging;
 using Soenneker.Blazor.Utils.ModuleImport.Abstract;
-using Soenneker.Extensions.CancellationTokens;
-using Soenneker.Utils.CancellationScopes;
+using Soenneker.Blazor.Utils.SessionStorage.Abstract;
+using Soenneker.Librarian.Abstractions;
+using Soenneker.Librarian.SessionStorage;
 
 namespace Soenneker.Blazor.Utils.SessionStorage;
 
-/// <inheritdoc cref="ISessionStorageInterop"/>
 public sealed class SessionStorageInterop : ISessionStorageInterop
 {
-    private const string _modulePath = "./_content/Soenneker.Blazor.Utils.SessionStorage/js/sessionstorageinterop.js";
-
+    private const string _containerName = "entries";
     private readonly IModuleImportUtil _moduleImportUtil;
-    private readonly CancellationScope _cancellationScope = new();
-    private int _disposed;
+    private readonly ILogger<SessionStorageLibrarianDatabase> _logger;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _disposed;
 
-    public SessionStorageInterop(IModuleImportUtil moduleImportUtil)
+    public SessionStorageInterop(IModuleImportUtil moduleImportUtil, ILogger<SessionStorageLibrarianDatabase> logger)
     {
         _moduleImportUtil = moduleImportUtil ?? throw new ArgumentNullException(nameof(moduleImportUtil));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async ValueTask Initialize(CancellationToken cancellationToken = default)
+    public async ValueTask Initialize(CancellationToken cancellationToken = default) =>
+        _ = await Run(container => ValueTask.FromResult(container), cancellationToken).NoSync();
+
+    public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
-        ThrowIfDisposed();
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        string id = EncodeKey(key);
+        return Run(async container =>
         {
-            await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-        }
-    }
-
-    public async ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
-    {
-        ValidateKey(key);
-        ThrowIfDisposed();
-
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
-        {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            return await module.InvokeAsync<string?>("get", linked, key);
-        }
+            string? json = await container.GetItem(id, cancellationToken).NoSync();
+            return json is null ? null : JsonSerializer.Deserialize(json, StorageJsonContext.Default.StorageDocument)!.Value;
+        }, cancellationToken);
     }
 
     public async ValueTask Set(string key, string value, CancellationToken cancellationToken = default)
     {
-        ValidateKey(key);
+        string id = EncodeKey(key);
         ArgumentNullException.ThrowIfNull(value);
-        ThrowIfDisposed();
-
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        string json = JsonSerializer.Serialize(new StorageDocument(value), StorageJsonContext.Default.StorageDocument);
+        await Run(async container =>
         {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            await module.InvokeVoidAsync("set", linked, key, value);
-        }
+            if (await container.UpdateItem(id, json, cancellationToken).NoSync() is null)
+                await container.AddItem(id, json, cancellationToken).NoSync();
+            return true;
+        }, cancellationToken, save: true).NoSync();
     }
 
     public async ValueTask Remove(string key, CancellationToken cancellationToken = default)
     {
-        ValidateKey(key);
-        ThrowIfDisposed();
-
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        string id = EncodeKey(key);
+        await Run(async container =>
         {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            await module.InvokeVoidAsync("remove", linked, key);
-        }
+            await container.DeleteItem(id, cancellationToken).NoSync();
+            return true;
+        }, cancellationToken, save: true).NoSync();
     }
 
     public async ValueTask Clear(CancellationToken cancellationToken = default)
     {
-        ThrowIfDisposed();
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        await Run(async container =>
         {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            await module.InvokeVoidAsync("clear", linked);
-        }
+            await container.DeleteAllItems(cancellationToken).NoSync();
+            return true;
+        }, cancellationToken, save: true).NoSync();
     }
 
-    public async ValueTask<bool> ContainsKey(string key, CancellationToken cancellationToken = default)
-    {
-        ValidateKey(key);
-        ThrowIfDisposed();
-
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
-        {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            return await module.InvokeAsync<bool>("containsKey", linked, key);
-        }
-    }
+    public async ValueTask<bool> ContainsKey(string key, CancellationToken cancellationToken = default) =>
+        await Get(key, cancellationToken).NoSync() is not null;
 
     public async ValueTask<IReadOnlyList<string>> GetKeys(CancellationToken cancellationToken = default)
     {
-        ThrowIfDisposed();
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        return await Run(async container =>
         {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            var keys = await module.InvokeAsync<string[]>("getKeys", linked);
-            return keys ?? Array.Empty<string>();
+            List<string> ids = await container.GetAllIds(cancellationToken).NoSync();
+            for (var i = 0; i < ids.Count; i++)
+                ids[i] = DecodeKey(ids[i]);
+            return ids;
+        }, cancellationToken).NoSync();
+    }
+
+    public ValueTask<int> GetLength(CancellationToken cancellationToken = default) =>
+        Run(container => container.CountItems(cancellationToken), cancellationToken);
+
+    private async ValueTask<T> Run<T>(Func<ILibrarianContainer, ValueTask<T>> operation, CancellationToken cancellationToken, bool save = false)
+    {
+        await _gate.WaitAsync(cancellationToken).NoSync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            // Reopen each operation to read the current snapshot and recover naturally after a conflict.
+            var database = new SessionStorageLibrarianDatabase(_moduleImportUtil, _logger, "Soenneker.Blazor.Utils.SessionStorage");
+            try
+            {
+                ILibrarianContainer container = await database.GetContainer(_containerName, cancellationToken).NoSync();
+                T result = await operation(container).NoSync();
+                if (save)
+                    await database.Save(cancellationToken).NoSync();
+                return result;
+            }
+            finally
+            {
+                // Never flush or replay an uncertain write during cleanup.
+                await database.DiscardAsync().NoSync();
+            }
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
-    public async ValueTask<int> GetLength(CancellationToken cancellationToken = default)
+    // Snapshot IDs are case-insensitive. Hex-encoded UTF-16 preserves browser key identity.
+    private static string EncodeKey(string key)
     {
-        ThrowIfDisposed();
-        CancellationToken linked = _cancellationScope.CancellationToken.Link(cancellationToken, out CancellationTokenSource? source);
-
-        using (source)
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return string.Create(checked(key.Length * 4), key, static (destination, value) =>
         {
-            IJSObjectReference module = await _moduleImportUtil.GetContentModuleReference(_modulePath, linked);
-            return await module.InvokeAsync<int>("getLength", linked);
-        }
+            for (var i = 0; i < value.Length; i++)
+                ((ushort)value[i]).TryFormat(destination.Slice(i * 4, 4), out _, "X4", CultureInfo.InvariantCulture);
+        });
     }
 
-    private static void ValidateKey(string key)
+    private static string DecodeKey(string id) => string.Create(id.Length / 4, id, static (destination, value) =>
     {
-        if (string.IsNullOrWhiteSpace(key))
-            throw new ArgumentException("Session storage key cannot be null or whitespace.", nameof(key));
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (Volatile.Read(ref _disposed) != 0)
-            throw new ObjectDisposedException(nameof(SessionStorageInterop));
-    }
+        for (var i = 0; i < destination.Length; i++)
+            destination[i] = (char)ushort.Parse(value.AsSpan(i * 4, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+    });
 
     public async ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            return;
-
-        await _cancellationScope.DisposeAsync();
-        await _moduleImportUtil.DisposeContentModule(_modulePath);
+        await _gate.WaitAsync().NoSync();
+        try { _disposed = true; }
+        finally { _gate.Release(); }
     }
 }

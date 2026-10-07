@@ -6,12 +6,16 @@ using System.Threading.Tasks;
 namespace Soenneker.Blazor.Utils.SessionStorage.Abstract;
 
 /// <summary>
-/// Blazor interop for browser <c>sessionStorage</c> operations.
+/// Librarian-backed document storage adapter for browser <c>sessionStorage</c> operations.
 /// </summary>
+/// <remarks>Uses a dedicated Librarian snapshot. Existing raw browser entries are not migrated.
+/// Mutations persist before returning; writes require Web Locks in a secure context.
+/// External writes can raise LibrarianConcurrencyException; failed operations are not automatically retried.
+/// Clear, GetKeys, and GetLength apply only to documents belonging to this utility.</remarks>
 public interface ISessionStorageInterop : IAsyncDisposable
 {
     /// <summary>
-    /// Ensures the JavaScript module for this package has been loaded and initialized.
+    /// Opens the Librarian document container after interactive rendering.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the Session Storage is ready for use.</returns>
@@ -43,14 +47,14 @@ public interface ISessionStorageInterop : IAsyncDisposable
     ValueTask Remove(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears all browser session storage entries.
+    /// Deletes all documents belonging to this utility and persists the change.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task that completes when the Session Storage has been cleared.</returns>
     ValueTask Clear(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns whether the specified key exists in browser session storage.
+    /// Returns whether the specified key exists in the utility document container.
     /// </summary>
     /// <param name="key">Key used to locate the target entry.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
@@ -58,14 +62,14 @@ public interface ISessionStorageInterop : IAsyncDisposable
     ValueTask<bool> ContainsKey(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns all session storage keys in index order.
+    /// Returns all document keys belonging to this utility in unspecified order.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>The storage keys in browser index order.</returns>
+    /// <returns>The storage keys in unspecified order.</returns>
     ValueTask<IReadOnlyList<string>> GetKeys(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the total number of session storage entries.
+    /// Returns the total number of documents belonging to this utility.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>A task whose result is the requested value.</returns>

@@ -1,3 +1,4 @@
+using Soenneker.Extensions.ValueTask;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -40,7 +41,7 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
         ValidateKey(key);
 
         string? value = await _interop.Get(key, cancellationToken)
-                                      .ConfigureAwait(false);
+                                      .NoSync();
 
         if (value is null)
             return default;
@@ -60,7 +61,7 @@ public sealed class SessionStorageUtil : ISessionStorageUtil
         ArgumentNullException.ThrowIfNull(typeInfo);
 
         string? value = await _interop.Get(key, cancellationToken)
-                                      .ConfigureAwait(false);
+                                      .NoSync();
 
         if (value is null)
             return default;
