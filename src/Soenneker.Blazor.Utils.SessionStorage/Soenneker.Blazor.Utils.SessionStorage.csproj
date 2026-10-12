@@ -42,6 +42,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Librarian.SessionStorage" Version="4.0.79" />
+        <PackageReference Include="Soenneker.Librarian.SessionStorage" Version="4.0.81" />
     </ItemGroup>
 </Project>
