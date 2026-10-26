@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <Nullable>enable</Nullable>
         <IsAotCompatible>true</IsAotCompatible>
         <Platforms>AnyCPU</Platforms>
@@ -9,7 +9,7 @@
 
     <PropertyGroup>
         <Description>A Librarian-backed Blazor session storage utility library</Description>
-        <Version Condition="'$(BUILD_VERSION)' == ''">4.0.0</Version>
+        <Version Condition="'$(BUILD_VERSION)' == ''">11.0.0</Version>
         <Version Condition="'$(BUILD_VERSION)' != ''">$(BUILD_VERSION)</Version>
         <AssemblyName>Soenneker.Blazor.Utils.SessionStorage</AssemblyName>
         <PackageId>Soenneker.Blazor.Utils.SessionStorage</PackageId>
@@ -43,6 +43,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Librarian.SessionStorage" Version="4.0.108" />
+        <PackageReference Include="Soenneker.Librarian.SessionStorage" Version="4.0.110" />
     </ItemGroup>
 </Project>
