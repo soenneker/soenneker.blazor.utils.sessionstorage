@@ -94,14 +94,12 @@ jobs:
             --title "v$BUILD_VERSION" \
             --notes "$PACKAGE_RELEASE_NOTES"
 
-  deploy-demo:
+  build-demo:
     needs: publish-package
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      pages: write
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -132,5 +130,16 @@ jobs:
         with:
           path: test/Soenneker.Blazor.Utils.SessionStorage.Demo/bin/Release/net11.0/publish/wwwroot
 
+  deploy-demo:
+    needs: build-demo
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v5
